@@ -1,8 +1,8 @@
-import {initLanguage,translate} from './i18n.mjs?v=5';
-import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor} from './model.mjs';
+import {initLanguage,translate} from './i18n.mjs?v=6';
+import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor,nextPairPlan} from './model.mjs?v=6';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let session=null,stage=0,retryMessage='',timerId=null,timerExpired=false,selectedTask='config';
+let session=null,stage=0,retryMessage='',timerId=null,timerExpired=false,selectedTask='config',mappingChip=null;
 const settings=$('settings');
 const userLabel=value=>`<span translate="no">${esc(value)}</span>`;
 initLanguage();
@@ -12,14 +12,15 @@ function refreshForm(chipChanged=false){
  $('targetKey').innerHTML=`<option value="normal">${c.normal}</option><option value="arbitrary">任意鍵學習</option><option value="keep">不變更</option>`;
  $('currentKey').innerHTML=`<option value="unknown">不知道</option><option value="normal">${c.normal}</option><option value="arbitrary">任意鍵學習</option>`;
  $('targetKey').value=oldTarget;$('currentKey').value=chipChanged?'unknown':oldCurrent;if(chipChanged)$('currentOut').value='unknown';
- $('targetKeyWrap').hidden=task!=='config';$('targetOutWrap').hidden=task==='clear';$('known').hidden=task==='clear';$('mappingFields').hidden=task!=='mapping';
- if(task==='mapping')$('mappingFields').innerHTML=c.slots.map((slot,i)=>`<div class="mapping-row"><label class="mapping-label" for="map${i}">${slot}<small>第 ${i+1} 個學習位置</small></label><input id="map${i}" type="text" maxlength="24" value="${String.fromCharCode(65+i)}" aria-label="${slot} 的遙控器按鍵"><label class="check-row"><input type="checkbox" id="skip${i}">略過</label></div>`).join('');
+ const custom=task==='pair'&&$('pairMethod').value==='arbitrary';
+ $('pairMethodWrap').hidden=task!=='pair';$('targetKeyWrap').hidden=task!=='config';$('targetOutWrap').hidden=task==='clear';$('known').hidden=task==='clear';$('mappingFields').hidden=!custom;
+ if(custom&&mappingChip!==$('chip').value){mappingChip=$('chip').value;$('mappingFields').innerHTML=c.slots.map((slot,i)=>`<div class="mapping-row"><label class="mapping-label" for="map${i}">${slot}<small>第 ${i+1} 個學習位置</small></label><input id="map${i}" type="text" maxlength="24" value="${String.fromCharCode(65+i)}" aria-label="${slot} 的遙控器按鍵"><label class="check-row"><input type="checkbox" id="skip${i}">略過</label></div>`).join('');}
  if(task!==selectedTask){$('targetOut').value=task==='config'?'momentary':'keep';selectedTask=task;}
- const notes={pair:'每次配對占一筆容量。',mapping:$('chip').value==='270'?'第三鍵為特殊功能，並非第三路輸出。':'依序學習 D0–D3，完成後返回單鍵模式。',clear:'刪除所有配對，模式設定保留。'};
- const note=notes[task]||(oldTarget==='arbitrary'?'需要重排按鍵時，請選「自訂按鍵對應」。':'');
+ const notes={pair:custom?($('chip').value==='270'?'逐鍵指定 D0、D1 與特殊功能。學完返回工作模式，對應保留。':'逐鍵指定 D0–D3。學完返回工作模式，對應保留。'):'學習一個單鍵，使用遙控器原始的按鍵對應。每次配對占一筆容量。',clear:'刪除所有配對，模式設定保留。'};
+ const note=notes[task]||(oldTarget==='arbitrary'?'需要重排按鍵時，請選「配對遙控器 → 自訂按鍵對應」。':'');
  $('taskNote').textContent=note;$('taskNote').hidden=!note;renderIdle();renderState();
 }
-function options(){const chip=$('chip').value;return {chip,task:$('task').value,targetKey:$('targetKey').value,targetOut:$('targetOut').value,currentKey:$('currentKey').value,currentOut:$('currentOut').value,mapping:chips[chip].slots.map((_,i)=>({label:$('map'+i)?.value.trim()||String.fromCharCode(65+i),skip:$('skip'+i)?.checked||false}))};}
+function options(){const chip=$('chip').value;return {chip,task:$('task').value==='pair'&&$('pairMethod').value==='arbitrary'?'mapping':$('task').value,targetKey:$('targetKey').value,targetOut:$('targetOut').value,currentKey:$('currentKey').value,currentOut:$('currentOut').value,mapping:chips[chip].slots.map((_,i)=>({label:$('map'+i)?.value.trim()||String.fromCharCode(65+i),skip:$('skip'+i)?.checked||false}))};}
 function log(text,label=null){session.logs.unshift({text,label,time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})});renderState();}
 function goalKey(s){return s.task==='pair'||s.task==='mapping'?'normal':s.task==='clear'?'keep':s.targetKey;}
 function renderState(){
@@ -27,8 +28,8 @@ function renderState(){
  if(!session)return;
  const s=session,k=goalKey(s),o=s.task==='clear'?'keep':s.targetOut;
  const track=(label,value,target,name)=>`<div><div class="state-name">${label}</div><div class="state-track"><span class="${value==='unknown'?'unknown':''}">${value==='unknown'?'未知':name(value)}</span>${target==='keep'?'<span class="muted">· 保留</span>':value===target?'<span class="matched" aria-label="符合目標">✓</span>':`<span class="arrow" aria-label="目標">→</span><span class="target">${name(target)}</span>`}</div></div>`;
- $('state').innerHTML=track('按鍵模式',s.key,k,v=>keyName(s.chip,v))+track('輸出模式',s.out,o,v=>outNames[v]);
- $('sessionName').textContent=chips[s.chip].name+' · '+({config:'設定模式',pair:'配對',mapping:'自訂按鍵',clear:'清除配對'}[s.task]);
+ $('state').innerHTML=track('接收端模式',s.key,k,v=>keyName(s.chip,v))+track('輸出模式',s.out,o,v=>outNames[v]);
+ $('sessionName').textContent=chips[s.chip].name+' · '+({config:'設定模式',pair:'配對 · 原始按鍵對應',mapping:'配對 · 自訂按鍵對應',clear:'清除配對'}[s.task]);
  $('history').innerHTML=s.logs.map(x=>`<li><time>${x.time}</time>${x.label?esc(x.text.slice(0,x.text.indexOf('：')+1))+userLabel(x.label)+esc(x.text.slice(x.text.indexOf('：')+1+x.label.length)):esc(x.text)}</li>`).join('');$('recordCount').textContent=s.logs.length;
 }
 const svg=(content,cls='')=>`<svg viewBox="0 0 36 36" class="${cls}" aria-hidden="true">${content}</svg>`;
@@ -42,7 +43,7 @@ function hardware(power,set,led='—'){
 function renderIdle(){if(session)return;$('guide').hidden=true;$('step').innerHTML='';}
 function resetSession(){stopTimer();session=null;stage=0;retryMessage='';$('controls').disabled=false;document.body.classList.remove('running');$('currentKey').value='unknown';$('currentOut').value='unknown';$('record').open=false;renderIdle();renderState();}
 settings.addEventListener('submit',e=>{e.preventDefault();if(session)return;const o=options();if(o.task==='mapping'&&o.mapping.every(x=>x.skip)){$('taskNote').hidden=false;$('taskNote').textContent='請至少指定一個按鍵。';return;}session=createPlan(o);stage=0;retryMessage='';$('controls').disabled=true;document.body.classList.add('running');log('開始 '+chips[o.chip].name+' 操作。');render();$('guideHeading').scrollIntoView({block:'start'});});
-$('chip').addEventListener('change',()=>refreshForm(true));$('task').addEventListener('change',()=>refreshForm());$('targetKey').addEventListener('change',()=>refreshForm());for(const id of ['targetOut','currentKey','currentOut'])$(id).addEventListener('change',()=>{renderIdle();renderState();});$('mappingFields').addEventListener('input',renderIdle);
+$('chip').addEventListener('change',()=>refreshForm(true));$('task').addEventListener('change',()=>refreshForm());$('pairMethod').addEventListener('change',()=>refreshForm());$('targetKey').addEventListener('change',()=>refreshForm());for(const id of ['targetOut','currentKey','currentOut'])$(id).addEventListener('change',()=>{renderIdle();renderState();});$('mappingFields').addEventListener('input',renderIdle);
 $('reset').addEventListener('click',()=>{if(confirm(translate('結束本次引導？晶片設定不會被重設。')))resetSession();});
 $('helpButton').addEventListener('click',()=>{$('reference').open=!$('reference').open;if($('reference').open)$('reference').scrollIntoView({behavior:'smooth',block:'start'});});
 function button(label,action,style='primary'){return `<button class="${style}" data-action="${action}">${label}</button>`;}
@@ -54,7 +55,7 @@ const decodeKey=n=>n===1?'normal':'arbitrary',decodeOut=n=>({1:'interlock',2:'mo
 function flashOptions(axis){const nums=axis==='key'?[1,2]:[1,2,3];return `<div class="led-choices ${nums.length===2?'two':''}">${nums.map(n=>`<button class="led-choice" data-action="flash${n}"><span class="led-pips" aria-hidden="true">${'<i class="pip"></i>'.repeat(n)}</span>閃 ${n} 次<small>${axis==='key'?keyName(session.chip,decodeKey(n)):outNames[decodeOut(n)]}</small></button>`).join('')}</div>${actions(button('沒看清楚／其他燈號','unclear','quiet'))}`;}
 function render(){if(!session)return;$('guide').hidden=false;const j=currentJob(session),phase=phaseFor(j);$('guideHeading').textContent=phase;$('guideLabel').textContent=j.type==='mode'?(j.axis==='key'?keyName(session.chip,j.target):outNames[j.target]):'';renderState();
  const views={mode:()=>renderMode(j),learn:()=>renderLearn(j),reboot:renderReboot,clear:renderClear,verify:renderVerify,done:renderDone};
- $('step').innerHTML=(retryMessage?notice(esc(retryMessage),'warn'):'')+views[j.type]()+source();
+ $('step').innerHTML=(retryMessage?notice(esc(retryMessage),'warn'):'')+(j.returning?notice('按鍵對應保留，返回工作模式。'):'')+views[j.type]()+source();
 }
 function renderMode(j){
  if(stage===0||stage===1)return title('斷電後，按住 SET','先讓接收晶片完全斷電。')+hardware('關閉','按住')+actions(button('已斷電，SET 已按住','prepareMode'));
@@ -85,10 +86,23 @@ function renderClear(){
 }
 function renderVerify(){const checks=session.key==='arbitrary'?['任意鍵模式供學習使用。','學完需返回一般工作模式。']:['逐鍵確認輸出或產品動作。','正常斷電重開，再確認配對保留。'];if(session.key!=='arbitrary'){const behavior={momentary:'按住有輸出，放開停止。',toggle:'同鍵按一次開，再按一次關。',interlock:'按另一鍵，切換保持的輸出。'}[session.out];if(behavior)checks.unshift(behavior);}return title(session.key==='arbitrary'?'已進入學習模式':'確認實際動作')+`<ul class="checklist">${checks.map(t=>`<li>${t}</li>`).join('')}</ul>`+actions(button(session.key==='arbitrary'?'已確認':'已實測，符合需求','verifySuccess'),button('稍後測試','verifyLater','quiet')+button('動作不符合','verifyHelp','quiet'));
 }
-function renderDone(){const text=session.task==='clear'?'配對已清除':session.verified?'已完成':'設定完成，待實測';return '<div class="confirmed" aria-hidden="true">✓</div>'+title(text)+`<div class="result-list">${keyName(session.chip,session.key)} · ${outNames[session.out]}${session.learned.length?`<p>${session.learned.map(x=>x.label?`${userLabel(x.label)} → ${esc(x.slot)}`:esc(x)).join('、')}</p>`:''}</div>`+(session.key==='arbitrary'?'<p class="note">學完後，需返回一般工作模式。</p>':'')+actions(button('新的操作','newSession'),session.task!=='clear'&&session.key!=='arbitrary'?button('再配對一支遙控器','nextPair','quiet'):'');}
+function pairingSummary(){
+ if(session.task==='mapping'){
+  const rows=chips[session.chip].slots.map((slot,i)=>{
+   const learned=session.learned.find(x=>x.slot===slot);
+   return `<tr><td>${learned?userLabel(learned.label):session.mapping[i].skip?'略過（未新增）':'尚未確認'}</td><td>${esc(slot)}</td></tr>`;
+  }).join('');
+  return `<table class="pairing-summary"><caption>本次按鍵對應</caption><thead><tr><th>遙控按鍵</th><th>接收端功能</th></tr></thead><tbody>${rows}</tbody></table><p class="note">已返回工作模式，自訂按鍵對應保留。</p>`;
+ }
+ return session.task==='pair'?'<p>配對方式：原始按鍵對應</p>':'';
+}
+function renderDone(){
+ const text=session.task==='clear'?'配對已清除':session.verified?'已完成':'設定完成，待實測';
+ return '<div class="confirmed" aria-hidden="true">✓</div>'+title(text)+pairingSummary()+`<div class="result-list"><div>輸出模式：${outNames[session.out]}</div><div class="note">接收端模式：${keyName(session.chip,session.key)}</div></div>`+(session.key==='arbitrary'?'<p class="note">學完後，需返回一般工作模式。</p>':'')+actions(button('新的操作','newSession'),session.task!=='clear'&&session.key!=='arbitrary'?button(session.task==='mapping'?'以相同對應再配對一支':'再配對一支遙控器','nextPair','quiet'):'');
+}
 function next(){stopTimer();stage++;retryMessage='';render();}
 function finish(){stopTimer();completeJob(session);stage=0;retryMessage='';render();}
-function restartMapping(){stopTimer();const o={...session,task:'mapping',currentKey:session.key,currentOut:session.out};const logs=session.logs;const learned=session.learned;session=createPlan(o);session.logs=logs;session.learned=learned;log('重新從第一格學習；先前已學資料未撤銷。');stage=0;retryMessage='';render();}
+function restartMapping(){stopTimer();const o={...session,task:'mapping',currentKey:session.key,currentOut:session.out};const logs=session.logs;session=createPlan(o);session.logs=logs;log('重新從第一格學習；先前已學資料未撤銷。');stage=0;retryMessage='';render();}
 $('step').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b||!session)return;const a=b.dataset.action,j=currentJob(session);
  if(a==='next')return next();
  if(a==='prepareMode'){stage=2;retryMessage='';render();return;}
@@ -113,7 +127,7 @@ $('step').addEventListener('click',e=>{const b=e.target.closest('button[data-act
  if(a==='clearUnclear'){stage=1;retryMessage='清除尚未確認，重新操作。';log('清除結果不明，尚未判定清除完成。');render();return;}
  if(a==='verifySuccess'||a==='verifyLater'){session.verified=a==='verifySuccess';log(session.verified?'使用者已確認實際行為／學習準備狀態。':'使用者完成設定步驟，尚未實測。');return finish();}
  if(a==='verifyHelp'){retryMessage='確認按鍵對應與有效接收。LED-VT 不代表輸出保持；仍有差異時，重新設定並選擇目前模式未知。'.replace('确认','確認');render();return;}
- if(a==='nextPair'){const old=session;session=createPlan({...old,task:'pair',currentKey:old.key,currentOut:old.out,targetOut:'keep'});session.logs=old.logs;stage=0;retryMessage='';log('沿用同一塊板子已確認的模式，配對另一支遙控器。');render();return;}
+ if(a==='nextPair'){const old=session;session=nextPairPlan(old);stage=0;retryMessage='';log(session.task==='mapping'?'沿用自訂按鍵對應，從第一格配對另一支遙控器。':'沿用同一塊板子已確認的模式，配對另一支遙控器。');render();return;}
  if(a==='newSession'){resetSession();$('chip').focus();return;}
 });
 refreshForm();

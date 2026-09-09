@@ -26,9 +26,18 @@ This is a manual guide. It does not connect to, read, or control the chip. Timer
 
 1. Select the receiver chip and operation.
 2. Choose the target modes. Leave current modes unknown unless you have confirmed them.
-3. For custom mapping, enter the remote button for each learning slot or mark it to skip.
+3. For **Pair a remote**, choose **Original button mapping** or **Custom mapping (arbitrary-button learning)**. For custom mapping, enter a remote button for each slot or mark it to skip.
 4. Select **Start**, follow the hardware instructions, and report the observed LED pattern.
 5. Test the remote’s actual behavior and confirm that pairings survive a normal power cycle.
+
+### Pairing methods
+
+- **Original button mapping:** enter the chip’s normal mode, then learn one remote button using the original encoder-to-output mapping.
+- **Custom mapping (arbitrary-button learning):** enter arbitrary-button learning mode, power cycle normally to start at slot 1, then learn each assigned button or skip a slot by timeout. Finally, return to normal operation **without discarding the learned mappings**.
+
+Normal operation means combination-button output on RFE270 and single-button output on RFE272A. It is separate from the method used to learn buttons, and from the momentary/toggle/interlock output setting. Returning after custom learning follows the datasheets (RFE270 pp. 4–5; RFE272A pp. 4–5).
+
+The completion screen lists the current pairing’s button assignments. **Pair another remote with the same mapping** repeats custom learning from slot 1 and retains the confirmed output mode; it does not switch to original-mapping pairing. Choose **New operation** to enter different assignments. Retrying interrupted custom learning retains earlier chip entries and the activity log, but the completion summary shows only the new attempt’s confirmed mappings.
 
 ### Output terminology
 
@@ -59,6 +68,14 @@ python3 -m http.server 8000
 ```
 
 Open http://localhost:8000/ in a browser. Use an HTTP server because the app loads JavaScript ES modules.
+
+## Checks
+
+```sh
+node --test tests/model.test.mjs
+```
+
+These regression checks cover both chips, learning order, return-to-operation, skipped slots, repeated pairing, and unconfirmed LED results. They do not replace hardware verification.
 
 ## Files
 

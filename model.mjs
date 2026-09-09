@@ -22,4 +22,11 @@ export function createPlan(options){
 export function currentJob(s){while(s.queue[0]?.type==='mode'&&s[s.queue[0].axis]===s.queue[0].target)s.queue.shift();return s.queue[0]||{type:'done'};}
 export function observeMode(s,count){const j=currentJob(s);if(j.type!=='mode')throw Error('Not mode observation');const v=decode(j.axis,count);s[j.axis]=v;const matched=v===j.target;if(matched)s.queue.shift();return {value:v,matched};}
 export function completeJob(s){return s.queue.shift();}
-export function phaseFor(j){return j.type==='mode'?(j.axis==='key'?'按鍵模式':'輸出模式'):j.type==='learn'||j.type==='reboot'?'遙控器學習':j.type==='verify'?'實際確認':j.type==='clear'?'清除配對':'完成';}
+export function phaseFor(j){return j.type==='mode'?(j.returning?'返回工作模式':j.axis==='key'?'按鍵模式':'輸出模式'):j.type==='learn'||j.type==='reboot'?'遙控器學習':j.type==='verify'?'實際確認':j.type==='clear'?'清除配對':'完成';}
+
+// Repeat the learning method, while keeping the confirmed output mode.
+export function nextPairPlan(previous){
+ const next=createPlan({...previous,task:previous.task==='mapping'?'mapping':'pair',currentKey:previous.key,currentOut:previous.out,targetOut:'keep'});
+ next.logs=previous.logs;
+ return next;
+}

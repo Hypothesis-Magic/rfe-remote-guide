@@ -8,3 +8,5 @@ main{max-width:750px}.workspace{display:block}.setup fieldset{display:grid;grid-
 #language{width:auto;min-height:38px;padding:6px 9px;font-size:14px}
 html[lang=en] .hardware-cell strong{text-align:center;overflow-wrap:anywhere;padding:0 5px}
 @media(max-width:520px){header{flex-wrap:wrap;gap:8px}.header-actions{margin-left:auto;gap:14px}html[lang=en] .setup fieldset{display:block}}
+
+#pairMethodWrap{grid-column:1/-1}.pairing-summary{margin-top:20px}.result-list .note{margin:8px 0 0}
