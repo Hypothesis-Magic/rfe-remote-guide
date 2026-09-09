@@ -1,4 +1,4 @@
-import {initLanguage,translate} from './i18n.mjs?v=4';
+import {initLanguage,translate} from './i18n.mjs?v=5';
 import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor} from './model.mjs';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

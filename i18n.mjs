@@ -91,9 +91,23 @@ export function toEnglish(text) {
  for(const [pattern,replace] of patterns)if(pattern.test(trimmed))return text.replace(trimmed,trimmed.replace(pattern,replace));
  return text.replace(/第 (\d+)–(\d+) 頁/g,'pp. $1–$2').replace(/規格書/g,'Datasheet').replace(fragmentPattern,s=>english[s]);
 }
+const languageStorageKey='rfe-remote-guide.language';
+// A manual choice wins. Otherwise follow the browser's primary language.
+export function resolveLanguage(saved,preferred=[]) {
+ if(saved==='zh-Hant'||saved==='en')return saved;
+ const primary=preferred.find(value=>typeof value==='string'&&value.trim());
+ if(!primary)return 'zh-Hant';
+ return /^zh(?:[-_]|$)/i.test(primary.trim())?'zh-Hant':'en';
+}
 let language='zh-Hant';
 export const translate=text=>language==='en'?toEnglish(text):text;
 export function initLanguage(root=document.documentElement) {
+ let saved=null;
+ try{saved=globalThis.localStorage?.getItem(languageStorageKey);}catch{/* Storage may be blocked. */}
+ const browser=globalThis.navigator;
+ const preferred=browser?.languages?.length?Array.from(browser.languages):[browser?.language];
+ language=resolveLanguage(saved,preferred);
+ root.lang=language;
  const originals=new WeakMap();
  const blocked=element=>element?.closest('script,style,[translate="no"]');
  function localize(node,key,read,write){
@@ -122,7 +136,9 @@ export function initLanguage(root=document.documentElement) {
  const selector=document.getElementById('language');
  selector.value=language;
  selector.addEventListener('change',()=>{
-  observer.disconnect();language=selector.value==='en'?'en':'zh-Hant';root.lang=language;visit(root);observe();
+  observer.disconnect();language=selector.value==='en'?'en':'zh-Hant';
+  try{globalThis.localStorage?.setItem(languageStorageKey,language);}catch{/* Switching still works without storage. */}
+  root.lang=language;visit(root);observe();
  });
  visit(root);observe();
 }

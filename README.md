@@ -6,9 +6,11 @@ A step-by-step web tool for pairing remotes and configuring RFE270 (2-channel) a
 
 ## Languages
 
-The interface starts in Traditional Chinese. Use the language selector in the header to switch between **繁體中文** and **English** at any time.
+The interface follows the browser’s primary language on first visit: Chinese locales (including `zh-TW`, `zh-HK`, and `zh-CN`) use Traditional Chinese; other languages use English. If no language information is available, it falls back to Traditional Chinese. No location permission or IP lookup is used.
 
-Switching languages preserves your selections, custom button names, current step, running timer, and activity log. Reloading starts a new session in Traditional Chinese.
+Use the language selector in the header to switch between **繁體中文** and **English** at any time. A manual choice is saved in this browser and takes priority on future visits. If browser storage is blocked, switching still works for the current visit.
+
+Switching languages preserves your selections, custom button names, current step, running timer, and activity log. Reloading starts a new session while retaining the saved language choice, when browser storage is available.
 
 ## Features
 
