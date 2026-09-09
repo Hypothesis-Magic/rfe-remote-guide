@@ -30,6 +30,12 @@ This is a manual guide. It does not connect to, read, or control the chip. Timer
 4. Select **Start**, follow the hardware instructions, and report the observed LED pattern.
 5. Test the remote’s actual behavior and confirm that pairings survive a normal power cycle.
 
+### Hands-free power-on timing
+
+For mode changes, power off first and select **Start — power on in 5 seconds**. During the preparation countdown, hold SET. Power on when the screen says **Power on now**. The required hold timer starts automatically, followed by the release prompt and LED feedback choices. No screen tap is needed while holding SET and powering on.
+
+Preparation time is separate from the chip’s required hold time. If power-on does not match the cue, restart the sequence or time the operation yourself and use the manual LED-report option. The guide does not detect power or button state. Power-on and SET-held indicators are red.
+
 ### Pairing methods
 
 - **Original button mapping:** enter the chip’s normal mode, then learn one remote button using the original encoder-to-output mapping.
@@ -72,10 +78,10 @@ Open http://localhost:8000/ in a browser. Use an HTTP server because the app loa
 ## Checks
 
 ```sh
-node --test tests/model.test.mjs
+node --test tests/*.test.mjs
 ```
 
-These regression checks cover both chips, learning order, return-to-operation, skipped slots, repeated pairing, and unconfirmed LED results. They do not replace hardware verification.
+These regression checks cover both chips, learning order, return-to-operation, skipped slots, repeated pairing, unconfirmed LED results, preparation-to-hold timing, cancellation, and manual LED reporting. They do not replace hardware verification.
 
 ## Files
 

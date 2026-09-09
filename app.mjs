@@ -1,5 +1,5 @@
-import {initLanguage,translate} from './i18n.mjs?v=6';
-import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor,nextPairPlan} from './model.mjs?v=6';
+import {initLanguage,translate} from './i18n.mjs?v=7';
+import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor,nextPairPlan} from './model.mjs?v=7';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let session=null,stage=0,retryMessage='',timerId=null,timerExpired=false,selectedTask='config',mappingChip=null;
@@ -58,12 +58,12 @@ function render(){if(!session)return;$('guide').hidden=false;const j=currentJob(
  $('step').innerHTML=(retryMessage?notice(esc(retryMessage),'warn'):'')+(j.returning?notice('按鍵對應保留，返回工作模式。'):'')+views[j.type]()+source();
 }
 function renderMode(j){
- if(stage===0||stage===1)return title('斷電後，按住 SET','先讓接收晶片完全斷電。')+hardware('關閉','按住')+actions(button('已斷電，SET 已按住','prepareMode'));
- if(stage===2)return title('保持按住，重新上電',`上電後維持 ${j.seconds} 秒，再放開 SET。`)+hardware('開啟','按住')+actions(button('已上電，開始計時','startModeTimer'),button(`已自行計時 ${j.seconds} 秒並放開`,'manualMode','quiet'));
- if(stage===3)return title('持續按住 SET')+hardware('開啟','按住')+timerMarkup(j.seconds)+actions(button('計時不同步，重做','restartMode','quiet'));
+ if(stage===0)return title('先斷電，準備操作','點開始後有 5 秒準備時間。先按住 SET，看到「現在上電」時再開啟電源。')+`<p class="note">上電後維持 ${j.seconds} 秒，再放開 SET。</p>`+hardware('關閉','放開')+actions(button('開始：5 秒後上電','prepareMode'),button('已自行完成操作，直接回報燈號','manualMode','quiet'));
+ if(stage===1)return title('按住 SET，等待上電提示','倒數結束時上電；不需要再點畫面。')+hardware('關閉','按住')+timerMarkup(5,'準備倒數，尚未開始計算按住時間')+actions(button('取消，重新準備','restartMode','quiet'));
+ if(stage===3)return title('現在上電，持續按住 SET','保持按住，直到畫面提示放開。若未同步上電，請重新準備。')+hardware('開啟','按住')+timerMarkup(j.seconds)+actions(button('計時不同步，重做','restartMode','quiet'));
  return title(stage===4?'放開 SET，回報燈號':'LED 閃了幾次？')+hardware('開啟','放開','觀察')+flashOptions(j.axis);
 }
-function timerMarkup(n){return `<div class="timer-box"><div class="timer" id="countdown" role="timer">${n.toFixed(1)}<small>秒</small></div><div class="bar"><i id="timebar"></i></div><div id="timerCaption" class="timer-caption">依實際按鍵與上電時刻計時</div></div>`;}
+function timerMarkup(n,caption='依實際按鍵與上電時刻計時'){return `<div class="timer-box"><div class="timer" id="countdown" role="timer">${n.toFixed(1)}<small>秒</small></div><div class="bar"><i id="timebar"></i></div><div id="timerCaption" class="timer-caption">${caption}</div></div>`;}
 function startCountdown(n,onEnd){stopTimer();timerExpired=false;const end=Date.now()+n*1000;const tick=()=>{const remaining=Math.max(0,(end-Date.now())/1000);if($('countdown'))$('countdown').innerHTML=`${remaining.toFixed(1)}<small>秒</small>`;if($('timebar'))$('timebar').style.width=(100-remaining/n*100)+'%';if(remaining<=0){stopTimer();timerExpired=true;onEnd();}};tick();if(!timerExpired)timerId=setInterval(tick,100);}
 function renderReboot(){
  if(stage===0)return title('先斷電，重設學習順序','配對資料與模式保留，下一次從第一格開始。')+hardware('關閉','放開')+actions(button('已斷電','next'));
@@ -105,9 +105,8 @@ function finish(){stopTimer();completeJob(session);stage=0;retryMessage='';rende
 function restartMapping(){stopTimer();const o={...session,task:'mapping',currentKey:session.key,currentOut:session.out};const logs=session.logs;session=createPlan(o);session.logs=logs;log('重新從第一格學習；先前已學資料未撤銷。');stage=0;retryMessage='';render();}
 $('step').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b||!session)return;const a=b.dataset.action,j=currentJob(session);
  if(a==='next')return next();
- if(a==='prepareMode'){stage=2;retryMessage='';render();return;}
- if(a==='startModeTimer'){stage=3;render();return startCountdown(j.seconds,()=>{stage=4;render();});}
- if(a==='manualMode'){stage=5;render();return;}
+ if(a==='prepareMode'){stage=1;retryMessage='';render();return startCountdown(5,()=>{stage=3;render();startCountdown(j.seconds,()=>{stage=4;render();});});}
+ if(a==='manualMode'){stopTimer();stage=5;render();return;}
  if(a==='restartMode'){stopTimer();stage=0;session[j.axis]='unknown';retryMessage='結果未確認，從斷電重做。';log('計時不同步，該模式重新標為未知。');render();return;}
  if(a.startsWith('flash')){const n=Number(a.slice(5));const r=observeMode(session,n);log(`${j.axis==='key'?'按鍵':'輸出'}切換後閃 ${n} 次 → ${j.axis==='key'?keyName(session.chip,r.value):outNames[r.value]}${r.matched?'，符合目標。':'，繼續切換。'}`);stage=0;retryMessage=r.matched?'':`目前為${j.axis==='key'?keyName(session.chip,r.value):outNames[r.value]}，需再切換一次。`;render();return;}
  if(a==='unclear'){session[j.axis]='unknown';stage=0;retryMessage='燈號不明，重新切換一次。';log('燈號不明；該模式標為未知。');render();return;}

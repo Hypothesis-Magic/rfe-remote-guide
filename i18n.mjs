@@ -1,5 +1,16 @@
 // Chinese source copy stays canonical; localization changes presentation only.
 export const english = {
+'先斷電，準備操作':'Power off and get ready',
+'點開始後有 5 秒準備時間。先按住 SET，看到「現在上電」時再開啟電源。':'After starting, you have 5 seconds to prepare. Hold SET, then switch the power on when “Power on now” appears.',
+'開始：5 秒後上電':'Start — power on in 5 seconds',
+'已自行完成操作，直接回報燈號':'Already completed manually — report LED flashes',
+'按住 SET，等待上電提示':'Hold SET and wait for the power-on cue',
+'倒數結束時上電；不需要再點畫面。':'Power on when the countdown ends. No further screen tap is needed.',
+'準備倒數，尚未開始計算按住時間':'Preparation countdown; the hold timer has not started',
+'取消，重新準備':'Cancel and prepare again',
+'現在上電，持續按住 SET':'Power on now and keep holding SET',
+'保持按住，直到畫面提示放開。若未同步上電，請重新準備。':'Keep holding until prompted to release. If power-on did not match the cue, start again.',
+
 '配對方式':'Pairing method',
 '原始按鍵對應':'Original button mapping',
 '自訂按鍵對應（任意鍵學習）':'Custom mapping (arbitrary-button learning)',
