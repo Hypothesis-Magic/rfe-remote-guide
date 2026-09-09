@@ -1,5 +1,5 @@
-import {initLanguage,translate} from './i18n.mjs?v=7';
-import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor,nextPairPlan} from './model.mjs?v=7';
+import {initLanguage,translate} from './i18n.mjs?v=8';
+import {chips,outNames,keyName,createPlan,currentJob,observeMode,completeJob,phaseFor,nextPairPlan} from './model.mjs?v=8';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let session=null,stage=0,retryMessage='',timerId=null,timerExpired=false,selectedTask='config',mappingChip=null;

@@ -131,7 +131,8 @@ export function resolveLanguage(saved,preferred=[]) {
  return /^zh(?:[-_]|$)/i.test(primary.trim())?'zh-Hant':'en';
 }
 let language='zh-Hant';
-export const translate=text=>language==='en'?toEnglish(text):text;
+// Omit trailing full stops in Chinese UI copy; retain sentence breaks in longer notes.
+export const translate=text=>language==='en'?toEnglish(text):text.replace(/。(?=\s*$)/u,'');
 export function initLanguage(root=document.documentElement) {
  let saved=null;
  try{saved=globalThis.localStorage?.getItem(languageStorageKey);}catch{/* Storage may be blocked. */}
